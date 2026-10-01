@@ -431,6 +431,48 @@ class GeochemData:
 
     # --- information and export -------------------------------------------------------
 
+    def CIA(self) -> pd.Series:
+        """Chemical Index of Alteration for each sample:
+        100 x Al2O3 / (Al2O3 + CaO + Na2O + K2O), using moles of each oxide.
+
+        Higher values mean more intense chemical weathering.  Null where any of
+        the four oxides is missing.
+
+        CaO here is the total CaO.  The original definition (Nesbitt & Young
+        1982) uses only the CaO held in silicates, so for samples containing
+        carbonate or apatite the value given here is lower than a corrected CIA.
+        """
+        from .. import chemistry
+
+        return chemistry.cia(self)
+
+    def CIPW_norm(self, rock_type="plutonic") -> pd.DataFrame:
+        """CIPW normative minerals (wt%) for each sample.
+
+        One row per sample, lined up with ``data.df``, and one column per
+        mineral: quartz, orthoclase, albite, anorthite, diopside, hypersthene,
+        olivine and so on.  For igneous rocks each row adds up to 100.  The
+        norm is an igneous calculation: for iron formation, carbonates and
+        other silica-poor sediments it still returns numbers, but they are
+        not meaningful and may not add up to 100.  A sample needs SiO2,
+        Al2O3, total iron, MgO, CaO, Na2O and K2O; without all of them its row
+        is null.  Join it to the table with ``data.df.join(data.CIPW_norm())``.
+
+        rock_type : "plutonic" or "volcanic".  Only matters where FeO and Fe2O3
+            were not both measured: total iron is then divided between them
+            using the ratio of Le Maitre (1976), which differs for the two.
+
+        Values the lab reported as below detection go in at the value they
+        were given during cleaning.
+        """
+        from .. import chemistry
+
+        if rock_type not in ("plutonic", "volcanic"):
+            raise ValueError("rock_type must be 'plutonic' or 'volcanic'.")
+        norm = chemistry.cipw(self, rock_type)
+        norm = norm.drop(columns=[c for c in chemistry.NORM_END_MEMBERS if c in norm.columns])
+        return norm.reindex(self.df.index)
+
     def list_analytes(self) -> list:
         """Every name that can go in ``data[...]``."""
         names = list(dict.fromkeys(c.analyte for c in self._analyte_columns))

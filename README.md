@@ -3,14 +3,6 @@
 In-house Python tools for the Minnesota Geological Survey. The first module loads and cleans
 Precambrian geochemistry tables so they are ready to query and plot.
 
-## Install
-
-From the project folder:
-
-```
-pip install -e .
-```
-
 ## Quick start
 
 ```python
@@ -127,6 +119,29 @@ Total iron is worked out row by row: FeO + Fe2O3 if both were measured; otherwis
 column; otherwise Fe2O3 on its own (taken as total); otherwise Fe; otherwise FeO on its own
 (taken as total). `data["FeO"]` and `data["Fe2O3"]` only have values where both were measured,
 because a total cannot be split without assuming an oxidation ratio.
+
+## Calculated values
+
+Two calculated quantities are available straight from the data, one value or row per sample.
+Like the unit conversions, they are worked out when asked for and nothing is added to the table.
+
+```python
+data.CIA()                       # Chemical Index of Alteration
+data.CIPW_norm()                 # CIPW normative minerals (wt%): quartz, orthoclase, albite, ...
+data.df.join(data.CIPW_norm())   # put the norm beside the rest of the table
+```
+
+- **CIA** is 100 x Al2O3 / (Al2O3 + CaO + Na2O + K2O), in moles. It uses the total CaO, with no
+  correction for carbonate or apatite, so carbonate-bearing samples come out lower than a
+  corrected CIA would.
+- **CIPW_norm** needs SiO2, Al2O3, total iron, MgO, CaO, Na2O and K2O; a sample without all of
+  them gets an empty row. For igneous rocks each row adds up to 100. The norm is an igneous
+  calculation, so for iron formation, carbonates and other silica-poor sediments the numbers
+  are not meaningful and may not add up to 100. Where FeO and Fe2O3 were not both measured, total iron is divided
+  using the ratio of Le Maitre (1976); pass `rock_type="volcanic"` for volcanic rocks (the
+  default is plutonic).
+
+Both work on filtered data, for example `data.filter_by_lithology("Felsic Intrusive").CIA()`.
 
 ## Detection limits
 

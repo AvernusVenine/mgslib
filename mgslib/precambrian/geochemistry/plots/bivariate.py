@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from . import _chemistry as chem
+from .. import chemistry as chem
 from . import _fields as fields
 from ._figure import (FIELD_LINE, FIELD_TEXT, INK, INK_SECONDARY, MUTED, SURFACE, NothingToPlot,
                       add_legend, complete_rows, finish, groups, halo_texts, new_axes,
@@ -49,7 +49,7 @@ def Harker(data, x="SiO2", y=None, color_by=None, title=None, save=None, show=Tr
     x : what goes on every X axis (default "SiO2").
     y : list of what to plot, one panel each.  Each entry is an analyte
         ("MgO", "Zr"), a sum ("Na2O+K2O"), a ratio ("La/Yb") or "Mg#", "Fe#",
-        "ASI", "MALI", "A/CNK", "A/NK".  Oxides are in wt%, elements in ppm.
+        "ASI", "MALI", "A/CNK", "A/NK", "CIA".  Oxides are in wt%, elements in ppm.
         Default: Al2O3, MgO, FeOt, CaO, Na2O, TiO2, K2O, P2O5, Mg#, Rb, Sr, Ba,
         Zr and La/Yb.
 

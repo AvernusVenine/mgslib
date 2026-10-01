@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from . import _chemistry as chem
+from .. import chemistry as chem
 from ._figure import GRID, INK_SECONDARY, NothingToPlot, finish, groups, new_axes
 
 

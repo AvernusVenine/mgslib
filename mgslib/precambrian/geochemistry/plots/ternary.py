@@ -6,7 +6,7 @@ import warnings
 
 import pandas as pd
 
-from . import _chemistry as chem
+from .. import chemistry as chem
 from . import _fields as fields
 from ._figure import (FIELD_LINE, FIELD_TEXT, INK_SECONDARY, MUTED, complete_rows, finish,
                       halo_texts, new_axes, scatter)

@@ -1,8 +1,9 @@
-"""Everything the plots calculate from a GeochemData object.
+"""Quantities calculated from a GeochemData object: indices, ratios, norms.
 
-Plots never read raw columns.  They ask the data object for an analyte in
-the unit they need (``data["SiO2"].wt_percent()``), so unit and oxide
-conversion and the iron rules all live in one place.
+Used by the plots and by ``data.CIA()`` and ``data.CIPW_norm()``.  Nothing here
+reads raw columns.  It asks the data object for an analyte in the unit it
+needs (``data["SiO2"].wt_percent()``), so unit and oxide conversion and the
+iron rules all live in one place.
 """
 
 from __future__ import annotations
@@ -13,8 +14,8 @@ import numpy as np
 import pandas as pd
 from periodictable import formula
 
-from ..data.analyte import IRON_FORMS, UnknownAnalyteError
-from ..data.units import ELEMENT_SYMBOLS, parse_oxide
+from .data.analyte import IRON_FORMS, UnknownAnalyteError
+from .data.units import ELEMENT_SYMBOLS, parse_oxide
 
 MAJOR_OXIDES = ["SiO2", "TiO2", "Al2O3", "FeOt", "MnO", "MgO", "CaO", "Na2O", "K2O", "P2O5"]
 # The majors a whole-rock analysis must have before it is recalculated to 100 %.
@@ -99,6 +100,13 @@ def asi(data) -> pd.Series:
     return (m["Al2O3"] / (lime + m["Na2O"] + m["K2O"])).rename("ASI")
 
 
+def cia(data) -> pd.Series:
+    """Chemical Index of Alteration: 100 x molar Al2O3 / (Al2O3 + CaO + Na2O + K2O).
+    CaO is the total CaO, with no correction for carbonate or apatite."""
+    m = moles(major_oxides(data, ["Al2O3", "CaO", "Na2O", "K2O"]))
+    return (100.0 * m["Al2O3"] / (m["Al2O3"] + m["CaO"] + m["Na2O"] + m["K2O"])).rename("CIA")
+
+
 def mali(data) -> pd.Series:
     """Modified alkali-lime index: Na2O + K2O - CaO (wt%)."""
     t = major_oxides(data, ["Na2O", "K2O", "CaO"])
@@ -119,9 +127,9 @@ def jensen_cations(data) -> pd.DataFrame:
 
 
 _SPECIAL = {"mg#": mg_number, "fe#": fe_index, "asi": asi, "mali": mali,
-            "a/cnk": a_cnk, "a/nk": a_nk, "fmsb": fmsb}
+            "a/cnk": a_cnk, "a/nk": a_nk, "fmsb": fmsb, "cia": cia}
 _LABELS = {"mg#": "Mg#", "fe#": "Fe#", "asi": "ASI", "mali": "Na2O + K2O - CaO (wt%)",
-           "a/cnk": "A/CNK", "a/nk": "A/NK", "fmsb": "FMSB"}
+           "a/cnk": "A/CNK", "a/nk": "A/NK", "fmsb": "FMSB", "cia": "CIA"}
 
 
 def _term(data, text: str):
@@ -148,7 +156,7 @@ def evaluate(data, expression: str):
     """Work out a quantity from its name.
 
     Accepts an analyte ("MgO", "Zr"), a sum ("Na2O+K2O"), a ratio ("La/Yb")
-    or one of Mg#, Fe#, ASI, MALI, A/CNK, A/NK, FMSB.  Oxides are in wt% and
+    or one of Mg#, Fe#, ASI, MALI, A/CNK, A/NK, FMSB, CIA.  Oxides are in wt% and
     elements in ppm.  Returns ``(values, axis label)``.
     """
     text = expression.strip()
@@ -212,6 +220,13 @@ def cipw(data, setting="plutonic") -> pd.DataFrame:
         warnings.simplefilter("ignore")
         norm = CIPW_norm(table)
     return norm
+
+
+# pyrolite reports diopside, hypersthene and olivine both as totals and as
+# their Mg and Fe end-members.  Summing a row would count those twice, so
+# tables handed to users leave the end-members out.
+NORM_END_MEMBERS = ["clinoenstatite", "clinoferrosilite", "enstatite", "ferrosilite",
+                    "forsterite", "fayalite"]
 
 
 _MODAL_WORDS = {
