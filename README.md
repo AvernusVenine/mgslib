@@ -269,10 +269,3 @@ MALI(data, ax=left)
 Fe_Index(data, ax=right)
 plt.show()
 ```
-
-## Running the tests
-
-```
-pip install pytest
-pytest
-```
