@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mgslib"
+version = "0.1.0"
+description = "In-house library used by the Minnesota Geological Survey"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas>=2.2",
+    "numpy",
+    "python-calamine",
+    "openpyxl",
+    "periodictable",
+    "matplotlib",
+    "mpltern",
+    "pyrolite",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+include = ["mgslib*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

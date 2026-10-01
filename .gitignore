@@ -1,9 +1,10 @@
-# Only the library itself and the README are tracked.
+# Only the library itself, the README and pyproject.toml are tracked.
 # Everything else at the top level is ignored.
 /*
 !/mgslib/
 !/README.md
 !/.gitignore
+!/pyproject.toml
 
 # Python leftovers inside the package
 __pycache__/
