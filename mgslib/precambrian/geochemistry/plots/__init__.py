@@ -5,6 +5,14 @@
     Harker(data, color_by="lithology")
 """
 
+import matplotlib.colors as _colors
+
+# pyrolite names matplotlib.colors.Norm in its type hints, but that class only
+# exists from matplotlib 3.11.  On older matplotlib (e.g. Google Colab) importing
+# pyrolite fails without this stand-in.  It is only ever used as a type hint.
+if not hasattr(_colors, "Norm"):
+    _colors.Norm = _colors.Normalize
+
 from .bivariate import (ASI, MALI, TAS, Al_Ti_Provenance, Fe_Index, Granite_Tectonic, Harker,
                         K_Rb_Provenance, Mafic_Oxides, Magnetic_Susceptibility,
                         Sediment_Recycling, Sediment_Tectonic, Shand_Index, Th_U_Weathering,
