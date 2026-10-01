@@ -16,7 +16,7 @@ pip install -e .
 ```python
 from mgslib.precambrian.geochemistry import load_geochem
 
-data = load_geochem("example_data/precambrian_geochemical_raw.xlsx")
+data = load_geochem("data.xlsx")
 data.summary()
 ```
 
@@ -53,7 +53,7 @@ Every filter gives back a new, separate table and leaves the one you filtered un
 the results under their own names and keep working with all of them:
 
 ```python
-data = load_geochem("example_data/precambrian_geochemical_raw.xlsx")
+data = load_geochem("data.xlsx")
 
 sediments = data.filter_by_rock_type("Sedimentary")
 iron_formation = sediments.filter_by_rock_name("iron formation")
@@ -67,10 +67,10 @@ The filters:
 
 ```python
 data.filter_by_rock_type("Sedimentary")
-data.filter_by_reference("EMRI Cuyuna 1")
+data.filter_by_reference("Smith 2020")
 data.filter_by_unit_name("Virginia Formation")
 data.filter_by_rock_name("iron formation")       # rock name contains these words
-data.filter_by_hole("18127")
+data.filter_by_hole("DH-01")
 data.filter_by_depth(100, 500)
 data.filter_by_area(420000, 430000, 5140000, 5160000)
 
@@ -194,7 +194,7 @@ units, calculates any ratios or norms, and draws the diagram. Filter first, then
 ```python
 from mgslib.precambrian.geochemistry.plots import TAS, Harker, Chondrite_REE
 
-data = load_geochem("example_data/precambrian_geochemical_raw.xlsx").remove_duplicates()
+data = load_geochem("data.xlsx").remove_duplicates()
 granites = data.filter_by_lithology("Felsic Intrusive")
 
 TAS(granites)

@@ -39,7 +39,7 @@ def load_geochem(path, sheets=None, below_detection="half", zeros_are_missing=Tr
 
     Example
     -------
-        data = load_geochem("example_data/precambrian_geochemical_raw.xlsx")
+        data = load_geochem("data.xlsx")
         data.summary()
     """
     raw = read_tables(path, sheets)
