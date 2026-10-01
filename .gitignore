@@ -1,0 +1,10 @@
+# Only the library itself and the README are tracked.
+# Everything else at the top level is ignored.
+/*
+!/mgslib/
+!/README.md
+!/.gitignore
+
+# Python leftovers inside the package
+__pycache__/
+*.py[cod]
