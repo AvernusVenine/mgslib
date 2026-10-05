@@ -63,6 +63,7 @@ data.filter_by_reference("Smith 2020")
 data.filter_by_unit_name("Virginia Formation")
 data.filter_by_rock_name("iron formation")       # rock name contains these words
 data.filter_by_hole("DH-01")
+data.filter_by_sample_id("A1")
 data.filter_by_depth(100, 500)
 data.filter_by_area(420000, 430000, 5140000, 5160000)
 
@@ -70,6 +71,11 @@ data.filter_above("SiO2", 50)
 data.filter_below("Cu", 100)
 data.filter_between("MgO", 2, 8)
 data.filter_above("Ti", 5000, unit="ppm")        # Ti is stored in wt%; compare in ppm
+
+# wherever a filter takes names, give one, several, or a list
+data.filter_by_sample_id("A1", "A2")
+data.filter_by_sample_id(["A1", "A2"])
+data.filter_by_rock_type(["Sedimentary", "Volcanic"])
 
 sediments = (data.remove_duplicates()
                  .only_primary_samples()

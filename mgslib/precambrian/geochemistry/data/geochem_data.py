@@ -57,6 +57,12 @@ class GeochemData:
 
         data.filter_by_rock_type("Sedimentary").filter_above("SiO2", 50)
 
+    Where a filter takes names, give one, several, or a list of them::
+
+        data.filter_by_sample_id("A1")
+        data.filter_by_sample_id("A1", "A2")
+        data.filter_by_sample_id(["A1", "A2"])
+
     ``data["Ti"]`` gives one analyte, which can be asked for in any unit::
 
         data["Ti"].ppm()
@@ -160,37 +166,37 @@ class GeochemData:
         """Keep rows where ``analyte`` is from ``low`` to ``high`` (inclusive)."""
         return self._keep(self._values(analyte, unit).between(low, high))
 
-    def _require_analytes(self, analytes):
+    def _require_analytes(self, analytes) -> list:
+        analytes = _as_list(analytes)
         if not analytes:
             raise ValueError("Name at least one analyte, e.g. data.filter_below_detection('Te').")
+        return analytes
 
     def filter_below_detection(self, *analytes) -> "GeochemData":
         """Keep rows the lab reported as below detection ("<") for every analyte named."""
-        self._require_analytes(analytes)
         mask = pd.Series(True, index=self.df.index)
-        for analyte in analytes:
+        for analyte in self._require_analytes(analytes):
             mask &= self[analyte].is_below_detection()
         return self._keep(mask)
 
     def filter_above_upper_limit(self, *analytes) -> "GeochemData":
         """Keep rows the lab reported as over the upper limit (">") for every analyte named."""
-        self._require_analytes(analytes)
         mask = pd.Series(True, index=self.df.index)
-        for analyte in analytes:
+        for analyte in self._require_analytes(analytes):
             mask &= self[analyte].is_above_upper_limit()
         return self._keep(mask)
 
     def filter_measured(self, *analytes) -> "GeochemData":
         """Keep rows with a real measurement (not null, "<" or ">") for every analyte named."""
-        self._require_analytes(analytes)
         mask = pd.Series(True, index=self.df.index)
-        for analyte in analytes:
+        for analyte in self._require_analytes(analytes):
             mask &= self[analyte].is_measured()
         return self._keep(mask)
 
     # --- filters on descriptions ------------------------------------------------------
 
     def _filter_text(self, role, what, values, contains=False) -> "GeochemData":
+        values = _as_list(values)
         if not values:
             raise ValueError(f"Give at least one {what} to keep.")
         column = self.df[self._role(role, what)]
@@ -230,13 +236,17 @@ class GeochemData:
         """Keep rows from the given geologic unit(s), e.g. "Virginia Formation"."""
         return self._filter_text("unit_name", "unit name", unit_names)
 
+    def filter_by_sample_id(self, *sample_ids) -> "GeochemData":
+        """Keep rows with the given sample ID(s), e.g. "A1" or ["A1", "A2"]."""
+        return self._filter_text("sample_id", "sample ID", sample_ids)
+
     def filter_by_hole(self, *hole_ids) -> "GeochemData":
         """Keep rows from the given drill hole or outcrop ID(s)."""
         return self._filter_text("hole_id", "hole or outcrop ID", hole_ids)
 
     def filter_by_sheet(self, *sheets) -> "GeochemData":
         """Keep rows that came from the given sheet(s) of the file."""
-        mask = self.df[SOURCE_SHEET].isin([str(s) for s in sheets])
+        mask = self.df[SOURCE_SHEET].isin([str(s) for s in _as_list(sheets)])
         return self._keep(mask)
 
     def filter_by_depth(self, top=None, bottom=None) -> "GeochemData":
@@ -493,7 +503,7 @@ class GeochemData:
 
     def select(self, *analytes) -> "GeochemData":
         """Keep the descriptive columns plus only the analytes named."""
-        self._require_analytes(analytes)
+        analytes = self._require_analytes(analytes)
         wanted = {c.name for analyte in analytes for c in self[analyte]._sources}
         dropped = [c.name for c in self._analyte_columns if c.name not in wanted]
         columns = [c for c in self.column_info if c.name not in dropped]
@@ -570,6 +580,17 @@ class GeochemData:
             self.issues.to_excel(writer, sheet_name="Issues", index=False)
             self.list_columns().to_excel(writer, sheet_name="Columns", index=False)
         return path
+
+
+def _as_list(values) -> list:
+    """Flatten filter arguments, so ``f("a", "b")`` and ``f(["a", "b"])`` mean the same."""
+    flat = []
+    for value in values:
+        if isinstance(value, (str, bytes)) or not hasattr(value, "__iter__"):
+            flat.append(value)
+        else:
+            flat.extend(value)
+    return flat
 
 
 def _list_numbers(values) -> str:
