@@ -1,7 +1,8 @@
 # MGSlib
 
-In-house Python tools for the Minnesota Geological Survey. The first module loads and cleans
-Precambrian geochemistry tables so they are ready to query and plot.
+In-house Python tools for the Minnesota Geological Survey. `mgslib.precambrian.geochemistry`
+loads and cleans Precambrian geochemistry tables so they are ready to query and plot.
+`mgslib.data` loads borehole data (CWI, QDI) from the MGS data server.
 
 ## Quick start
 
@@ -205,6 +206,95 @@ data.list_columns()             # every column, its original header and its unit
 data.select("SiO2", "Ti", "Zr") # descriptive columns plus just these analytes
 data.to_excel("cleaned.xlsx")   # the table, the detection-limit record and the issue log
 data.to_csv("cleaned.csv")
+```
+
+## Loading borehole data
+
+`mgslib.data` fetches borehole data from the MGS data server: the County Well Index (CWI) and
+the Quaternary Data Index (QDI). Say what to include and which part of the state you want:
+
+```python
+from mgslib.data import load_data, INCLUDE_QUAT_DATA
+
+data = load_data(include=INCLUDE_QUAT_DATA, by={"county": "Ramsey"})
+data.summary()
+```
+
+`include` is one of these ready-made choices:
+
+| Name | What it loads |
+|---|---|
+| `INCLUDE_QUAT_DATA` | CWI wells and stratigraphy layers, plus QDI samples |
+| `INCLUDE_CWI` | CWI wells and stratigraphy layers |
+| `INCLUDE_QDI` | QDI samples |
+| `INCLUDE_ALL` | Every table of every dataset |
+
+Each is only a short name for a dictionary of datasets and tables, so you can also write your
+own: `include={"cwi": ["c5st", "c5ix"], "qdi": ["qdi"]}`.
+
+`by` says which part of the data to load. Give several values as a list:
+`by={"county": ["Ramsey", "Dakota"]}`.
+
+If the server address is not already set up on your computer, set it once at the top:
+
+```python
+from mgslib.data import set_server
+set_server("http://...")
+```
+
+### What you get back
+
+Boreholes contain layers (CWI: a top and a bottom depth) and samples (QDI: a single depth).
+The data comes back as two tables that stay in step:
+
+- `data.df` has one row per layer or sample. Every row has the `relateid` of its borehole, a
+  `kind` (`"layer"` or `"sample"`) and `depth_top` / `depth_bottom`. For a sample the two
+  depths are the same.
+- `data.boreholes` has one row per borehole, and always holds exactly the boreholes that the
+  layers and samples in `data.df` belong to.
+
+`data.layers` and `data.samples` give just the layers or just the samples.
+
+### Filtering
+
+As with the geochemistry data, every filter gives back a new, separate object and leaves the
+original untouched:
+
+```python
+hole = data.filter_by_relateid("2000012")      # one borehole, with all its layers and samples
+hole.layers
+hole.samples
+hole.boreholes
+
+sand = data.filter_by_primary_lithology("SAND")   # every sand layer, in any borehole
+sand.boreholes                                    # the boreholes those layers are in
+shallow_sand = sand.filter_by_depth(0, 50)
+```
+
+The filters:
+
+```python
+data.filter_by_relateid("2000012")             # zeros at the front do not matter
+data.filter_by_county("Ramsey")
+data.filter_by_area(480000, 500000, 4970000, 4990000)
+
+data.filter_by_primary_lithology("SAND", "GRAVEL")
+data.filter_by_depth(0, 50)                    # layers partly inside the range are kept
+data.filter_by_depth(top=100)                  # everything below 100
+data.filter_by_sample_id("S1")
+data.filter_by_dataset("qdi")
+
+data.filter_by("strat", "QBAA")                # any other column, by name
+data.list_columns()                            # every column name
+```
+
+Filtering by something about a borehole (relateid, county, area) keeps those boreholes with
+everything in them. Filtering by something about a layer or sample (lithology, depth) keeps
+only the matching layers and samples; each still carries its `relateid`.
+
+```python
+data.to_excel("ramsey.xlsx")    # one sheet of layers and samples, one of boreholes
+data.to_csv("ramsey.csv")       # the layers and samples
 ```
 
 ## Plots

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from ...._util import as_list as _as_list
 from .analyte import IRON_FORMS, Analyte
 from .cleaning import (ABOVE_LIMIT_FACTOR, DUPLICATE_GROUP, FLAG_COLUMNS, FLAG_DUPLICATE,
                        clean, qaqc_rows)
@@ -580,17 +581,6 @@ class GeochemData:
             self.issues.to_excel(writer, sheet_name="Issues", index=False)
             self.list_columns().to_excel(writer, sheet_name="Columns", index=False)
         return path
-
-
-def _as_list(values) -> list:
-    """Flatten filter arguments, so ``f("a", "b")`` and ``f(["a", "b"])`` mean the same."""
-    flat = []
-    for value in values:
-        if isinstance(value, (str, bytes)) or not hasattr(value, "__iter__"):
-            flat.append(value)
-        else:
-            flat.extend(value)
-    return flat
 
 
 def _list_numbers(values) -> str:
