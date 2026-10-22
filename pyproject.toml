@@ -17,7 +17,7 @@ dependencies = [
     "matplotlib",
     "mpltern",
     "pyrolite",
-    "requests",
+    "pyodbc",
 ]
 
 [project.optional-dependencies]
