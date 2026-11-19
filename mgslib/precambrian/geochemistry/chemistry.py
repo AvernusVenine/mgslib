@@ -126,10 +126,27 @@ def jensen_cations(data) -> pd.DataFrame:
     return pd.DataFrame({"Al": 2.0 * m["Al2O3"], "Fe+Ti": m["FeOt"] + m["TiO2"], "Mg": m["MgO"]})
 
 
+def eu_anomaly(data, reference="TM85") -> pd.Series:
+    """Europium anomaly, Eu/Eu* = Eu_N / (Sm_N x Tb_N)^(1/2): Eu* is the
+    geometric mean of its neighbours Sm and Tb.  Tb is used rather than Gd,
+    because Gd can itself be anomalous in seawater-derived sediment.
+
+    reference : what to normalise to - "TM85" (chondrite of Taylor & McLennan
+        1985, the default), another chondrite ("MS95", "SM89", "PON"), or a
+        shale: "PAAS" (Pourmand et al. 2012), "PAAS_TM85" (Taylor & McLennan
+        1985), "MUQ" (Kamber et al. 2005).
+    """
+    values, _ = reference_values({**SHALES, **CHONDRITES}, reference, "reference")
+    normalised = {e: (trace(data, e) / values[e]).where(lambda s: s > 0) for e in ("Sm", "Eu", "Tb")}
+    eu_star = (normalised["Sm"] * normalised["Tb"]) ** (1.0 / 2.0)
+    return (normalised["Eu"] / eu_star).rename("Eu/Eu*")
+
+
 _SPECIAL = {"mg#": mg_number, "fe#": fe_index, "asi": asi, "mali": mali,
-            "a/cnk": a_cnk, "a/nk": a_nk, "fmsb": fmsb, "cia": cia}
+            "a/cnk": a_cnk, "a/nk": a_nk, "fmsb": fmsb, "cia": cia, "eu/eu*": eu_anomaly}
 _LABELS = {"mg#": "Mg#", "fe#": "Fe#", "asi": "ASI", "mali": "Na2O + K2O - CaO (wt%)",
-           "a/cnk": "A/CNK", "a/nk": "A/NK", "fmsb": "FMSB", "cia": "CIA"}
+           "a/cnk": "A/CNK", "a/nk": "A/NK", "fmsb": "FMSB", "cia": "CIA",
+           "eu/eu*": "Eu/Eu* (chondrite, Taylor & McLennan 1985)"}
 
 
 def _term(data, text: str):
@@ -156,7 +173,7 @@ def evaluate(data, expression: str):
     """Work out a quantity from its name.
 
     Accepts an analyte ("MgO", "Zr"), a sum ("Na2O+K2O"), a ratio ("La/Yb")
-    or one of Mg#, Fe#, ASI, MALI, A/CNK, A/NK, FMSB, CIA.  Oxides are in wt% and
+    or one of Mg#, Fe#, ASI, MALI, A/CNK, A/NK, FMSB, CIA, Eu/Eu*.  Oxides are in wt% and
     elements in ppm.  Returns ``(values, axis label)``.
     """
     text = expression.strip()
@@ -251,11 +268,26 @@ def modal_qap(data):
     return pd.DataFrame({corner: data.df[found[corner]] for corner in "QAP"})
 
 
-# Reference compositions for normalised REE diagrams: option -> (pyrolite name, citation).
+# Chondrite REE (ppm) of Taylor & McLennan (1985, The Continental Crust, Blackwell):
+# Evensen et al. (1978) CI values x 1.5, volatile-free.  Not in pyrolite, so given here;
+# checked against the compilation of Korotev (meteorites.wustl.edu/goodstuff/ree-chon.htm).
+CHONDRITE_TM85 = {
+    "La": 0.367, "Ce": 0.957, "Pr": 0.137, "Nd": 0.711, "Sm": 0.231, "Eu": 0.087, "Gd": 0.306,
+    "Tb": 0.058, "Dy": 0.381, "Ho": 0.0851, "Er": 0.249, "Tm": 0.0356, "Yb": 0.248, "Lu": 0.0381,
+}
+
+# Reference compositions for normalised REE diagrams: option -> (pyrolite name, or the
+# values themselves, and citation).
 CHONDRITES = {
+    "TM85": (CHONDRITE_TM85, "Taylor & McLennan (1985)"),
     "MS95": ("Chondrite_MS95", "McDonough & Sun (1995)"),
     "SM89": ("Chondrite_SM89", "Sun & McDonough (1989)"),
     "PON": ("Chondrite_PON", "Palme & O'Neill (2014)"),
+}
+SHALES = {
+    "PAAS": ("PAAS_Pourmand2012", "Pourmand et al. (2012)"),
+    "PAAS_TM85": ("PAAS_TM1985", "Taylor & McLennan (1985)"),
+    "MUQ": ("MUQ_Kamber2005", "Kamber et al. (2005)"),
 }
 PRIMITIVE_MANTLES = {
     "SM89": ("PM_SM89", "Sun & McDonough (1989)"),
@@ -272,6 +304,8 @@ def reference_values(choices: dict, reference: str, what: str):
     if key not in choices:
         raise ValueError(f"Unknown {what} '{reference}'. Choose from: {', '.join(choices)}.")
     name, citation = choices[key]
+    if isinstance(name, dict):   # values written out here rather than taken from pyrolite
+        return pd.Series(name, dtype=float)[REE], citation
     composition = get_reference_composition(name)
     composition.set_units("ppm")
     return composition.comp[REE].astype(float), citation

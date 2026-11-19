@@ -2,19 +2,19 @@
 
 Each one is an ordinary dictionary of ``{dataset: [tables]}``, so
 ``load_data(include=INCLUDE_CWI, ...)`` and
-``load_data(include={"cwi": ["c5ix", "c5st"]}, ...)`` are the same thing.
+``load_data(include={"cwi": ["c4ix", "c4st"]}, ...)`` are the same thing.
 """
 
 from .schema import datasets
 
 # County Well Index: the wells and their stratigraphy layers.
-INCLUDE_CWI = {"cwi": ["c5ix", "c5st"]}
+INCLUDE_CWI = {"cwi": ["c4ix", "c4st"]}
 
-# Quaternary Data Index: the samples.
-INCLUDE_QDI = {"qdi": ["qdi"]}
+# Quaternary Data Index: the texture and grain-count samples.
+INCLUDE_QDI = {"qdi": ["texture"]}
 
 # Everything used for Quaternary work: CWI wells and layers, plus QDI samples.
-INCLUDE_QUAT_DATA = {"cwi": ["c5st", "c5ix"], "qdi": ["qdi"]}
+INCLUDE_QUAT_DATA = {"cwi": ["c4ix", "c4st"], "qdi": ["texture"]}
 
 # Every table of every dataset.
 INCLUDE_ALL = datasets()

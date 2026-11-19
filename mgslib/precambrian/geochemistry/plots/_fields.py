@@ -76,6 +76,62 @@ K_RB_MAIN_TREND = 230.0
 K2O_PERCENT_TO_K_PPM = 8301.5
 
 
+# --- Chemical sediments / iron formation -------------------------------------------------
+# Sm/Yb against Y/Ho (plain ratios, not normalised) of Alexander et al. (2008, Geochim.
+# Cosmochim. Acta 72, fig. 6b).  Digitised from the vector artwork of the published
+# figure, calibrated on its log-scale tick marks (accurate to well under 1 %).
+# Points are (Sm/Yb, Y/Ho).  The curve is two-component conservative mixing of
+# shallow (<500 m) seawater (Alibo & Nozaki 1999) with >350 C vent fluid (Bau &
+# Dulski 1999).
+ALEXANDER_MIXING_LINE = [
+    (0.61, 56.8), (0.727, 55.5), (0.844, 54.5), (0.956, 53.4), (1.07, 52.4), (1.17, 51.4),
+    (1.27, 50.6), (1.37, 49.8), (1.47, 49.0), (1.56, 48.3), (1.64, 47.7), (2.41, 42.9),
+    (2.98, 40.0), (3.44, 38.1), (3.79, 36.6), (4.1, 35.6), (4.35, 34.8), (4.58, 34.1),
+    (4.77, 33.6), (4.92, 33.1), (5.83, 30.8), (6.22, 29.9), (6.47, 29.4), (6.6, 29.2),
+    (6.73, 29.0), (6.81, 28.7), (6.9, 28.6),
+]
+ALEXANDER_MIXING_MARKS = {"1% hydrothermal fluid": (1.64, 47.7),
+                          "5% hydrothermal fluid": (3.79, 36.6)}
+ALEXANDER_FIELDS = {
+    "Seawater": [
+        (0.85, 56.6), (0.839, 58.2), (0.812, 59.8), (0.771, 61.2), (0.722, 62.4), (0.668, 63.2),
+        (0.546, 63.2), (0.508, 62.2), (0.476, 61.0), (0.455, 59.6), (0.443, 58.0), (0.438, 56.2),
+        (0.443, 54.5), (0.458, 53.0), (0.483, 51.8), (0.515, 51.0), (0.557, 50.4), (0.681, 50.4),
+        (0.732, 51.2), (0.781, 52.2), (0.818, 53.4), (0.839, 54.9), (0.85, 56.6)],
+    "Hydrogenetic\nFe-Mn crusts": [
+        (1.74, 21.5), (1.72, 22.7), (1.65, 24.0), (1.57, 25.2), (1.46, 26.2), (1.34, 26.8),
+        (1.12, 26.9), (1.03, 26.4), (0.956, 25.5), (0.901, 24.3), (0.867, 23.1), (0.85, 20.5),
+        (0.872, 19.3), (0.913, 18.4), (0.974, 17.6), (1.05, 17.1), (1.15, 16.8), (1.31, 16.9),
+        (1.43, 17.2), (1.54, 17.8), (1.63, 18.6), (1.7, 19.6), (1.74, 20.8), (1.74, 21.5)],
+    "High-T\nhydrothermal fluids": [
+        (9.25, 29.1), (9.07, 29.9), (8.78, 30.6), (8.28, 31.2), (7.76, 31.6), (7.18, 31.8),
+        (6.14, 31.8), (5.68, 31.4), (5.36, 31.1), (5.08, 30.5), (4.92, 29.8), (4.86, 28.6),
+        (4.96, 28.0), (5.15, 27.4), (5.43, 26.9), (5.79, 26.5), (6.26, 26.3), (7.61, 26.5),
+        (8.18, 26.8), (8.67, 27.2), (9.02, 27.9), (9.25, 28.5), (9.25, 29.1)],
+}
+ALEXANDER_LABELS = {"Seawater": (0.33, 57.0), "Hydrogenetic\nFe-Mn crusts": (1.25, 14.0),
+                    "High-T\nhydrothermal fluids": (7.0, 22.5)}
+Y_HO_CHONDRITE = 28.0   # chondritic Y/Ho, marked on the Alexander et al. axis
+
+# Eu/Eu* = 1 is no anomaly (Al2O3 against Eu/Eu*, after Lawrence et al. 2006).
+EU_ANOMALY_NONE = 1.0
+
+# Al2O3 against SiO2 (wt%) of Toth (1980) and Wonder et al. (1988, Econ. Geol. 83).
+# NOT CHECKED AGAINST THE ORIGINAL: the 1988 paper was not available.  The lines
+# are digitised from raster reproductions: an example figure supplied by MGS
+# (example_data/Wonder_Diagram_Example.png; slopes 9.9, 2.9 and 2.0) and Yalcin &
+# Kara (2026, Carpathian J. Earth Environ. Sci. 21, fig. 4a; slopes 10.0 and 1.97,
+# no deep-sea sediment line).  All pass through the origin; round slopes are used:
+#   SiO2 = 10 x Al2O3   hydrothermal (above) / hydrogenous and detrital input (below)
+#   SiO2 =  3 x Al2O3   hydrogenous and detrital input / deep-sea sediment
+#   SiO2 =  2 x Al2O3   deep-sea sediment / deep-sea pelagic sediment (below)
+WONDER_SIO2_AL2O3_SLOPES = {"hydrothermal / hydrogenous": 10.0,
+                            "hydrogenous / deep-sea sediment": 3.0,
+                            "deep-sea sediment / pelagic sediment": 2.0}
+WONDER_SIO2_AL2O3_LABELS = {"Hydrothermal": (3.0, 85), "Hydrogenous and\ndetrital input": (14.0, 72),
+                            "Deep-sea sediment": (16.5, 41), "Deep-sea pelagic\nsediment": (16.0, 12)}
+
+
 # --- Ternary fields ----------------------------------------------------------------
 # All ternary points below are (top, left, right) and add up to 100.
 

@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 
 from .._util import as_list
-from .schema import LAYER, SAMPLE
+from .schema import LAYER, MN_COUNTIES, SAMPLE, county_code
 
 # Columns every layer and sample has, in the order they are shown.
 RECORD_COLUMNS = ["relateid", "kind", "dataset", "table", "sample_id",
@@ -122,9 +122,12 @@ class GeoData:
         return self._keep_boreholes(keys.isin(wanted))
 
     def filter_by_county(self, *counties) -> "GeoData":
-        """Keep boreholes in the given county or counties."""
-        column = self._column(self.boreholes, "county", "county")
-        return self._keep_boreholes(_matches(column, "county", counties))
+        """Keep boreholes in the given county or counties, by name ("Ramsey") or code ("62")."""
+        column = self._column(self.boreholes, "county_code", "county")
+        codes = [county_code(c) for c in as_list(counties)]
+        if not codes:
+            raise ValueError("Give at least one county to keep.")
+        return self._keep_boreholes(column.isin(codes))
 
     def filter_by_area(self, east_min, east_max, north_min, north_max) -> "GeoData":
         """Keep boreholes inside a rectangle of UTM coordinates."""
@@ -139,6 +142,11 @@ class GeoData:
         """Keep layers and samples of the given primary lithology, e.g. "SAND"."""
         column = self._column(self.df, "primary_lithology", "primary lithology")
         return self._keep_records(_matches(column, "primary lithology", lithologies))
+
+    def filter_by_strat(self, *codes) -> "GeoData":
+        """Keep layers and samples with the given stratigraphic code(s), e.g. "QBAA"."""
+        column = self._column(self.df, "strat", "strat")
+        return self._keep_records(_matches(column, "strat code", codes))
 
     def filter_by_sample_id(self, *sample_ids) -> "GeoData":
         """Keep samples with the given sample ID(s).  Layers have no IDs and are dropped."""
@@ -206,6 +214,8 @@ class GeoData:
     def _summary_text(self) -> str:
         lines = [self._headline()]
         for key, values in self._settings.get("by", {}).items():
+            if key == "county":
+                values = [MN_COUNTIES.get(v, v) for v in values]
             lines.append(f"  loaded by {key}: {', '.join(map(str, values))}")
         counts = self.df.groupby(["dataset", "table", "kind"], sort=False).size()
         for (dataset, table, kind), count in counts.items():
@@ -214,6 +224,20 @@ class GeoData:
                             for c in ("depth_top", "depth_bottom")]).dropna()
         if len(depths):
             lines.append(f"  depths from {depths.min():g} to {depths.max():g}")
+        if "depth_unit" in self.df.columns:
+            metres = int(self.df["depth_unit"].astype("string").str.strip()
+                         .str.lower().eq("m").sum())
+            if metres:
+                lines.append(f"  {metres:,} samples say their depth is in metres; "
+                             "depths are shown as stored")
+        no_hole = int(self.df["relateid"].isna().sum())
+        if no_hole:
+            lines.append(f"  {no_hole:,} layers or samples have no relateid, "
+                         "so they belong to no borehole")
+        if "county_code" in self.boreholes.columns:
+            no_county = int(self.boreholes["county_code"].isna().sum())
+            if no_county:
+                lines.append(f"  {no_county:,} boreholes have no county")
         return "\n".join(lines)
 
     def to_csv(self, path) -> Path:

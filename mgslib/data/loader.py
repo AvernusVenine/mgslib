@@ -1,27 +1,29 @@
-"""Ask the server for data and put it together into a ``GeoData``."""
+"""Read data from its sources and put it together into a ``GeoData``."""
 
 from __future__ import annotations
 
 import pandas as pd
 
 from .._util import as_list
-from . import client
+from . import sources
 from .geo_data import RECORD_COLUMNS, GeoData
-from .schema import (BOREHOLE, BY_KEYS, NUMERIC_ROLES, SAMPLE, TABLES, datasets,
-                     standard_relateid)
+from .schema import (BOREHOLE, BY_KEYS, MN_COUNTIES, NUMERIC_ROLES, SAMPLE, TABLES,
+                     county_code, datasets, standard_relateid)
 
 
-def load_data(include, by=None) -> GeoData:
-    """Load borehole data from the MGS data server.
+def load_data(include, by=None, refresh=False) -> GeoData:
+    """Load borehole data from CWI and QDI.  The sources are only ever read.
 
     Parameters
     ----------
     include : which datasets and tables to load, as ``{dataset: [tables]}``.
         Use one of the ready-made choices (``INCLUDE_QUAT_DATA``,
         ``INCLUDE_CWI``, ``INCLUDE_QDI``, ``INCLUDE_ALL``) or write your own,
-        e.g. ``{"cwi": ["c5st", "c5ix"], "qdi": ["qdi"]}``.
+        e.g. ``{"cwi": ["c4st", "c4ix"], "qdi": ["texture"]}``.
     by : which part of the data to load, e.g. ``{"county": "Ramsey"}``.
         Give several values as a list: ``{"county": ["Ramsey", "Dakota"]}``.
+    refresh : QDI is read once per session and then kept.  ``refresh=True``
+        reads it again, to pick up changes made since.
 
     Example
     -------
@@ -32,13 +34,23 @@ def load_data(include, by=None) -> GeoData:
     """
     include = _check_include(include)
     by = _check_by(by)
-    records, boreholes = assemble(client.fetch(include, by))
+    tables = {}
+    if "cwi" in include:
+        tables.update(sources.read_cwi(include["cwi"], by))
+    if "qdi" in include:
+        tables.update(_read_qdi(by, refresh))
+    records, boreholes = assemble(tables)
+    if "county_code" in boreholes.columns:
+        boreholes["county_code"] = (boreholes["county_code"].astype("string").str.strip()
+                                    .str.zfill(2).astype(object))
+        boreholes.insert(boreholes.columns.get_loc("county_code"), "county",
+                         boreholes["county_code"].map(MN_COUNTIES))
     return GeoData(records, boreholes, settings={"include": include, "by": by})
 
 
 def _check_include(include) -> dict:
     available = datasets()
-    example = 'e.g. include={"cwi": ["c5st", "c5ix"]} or include=INCLUDE_QUAT_DATA'
+    example = 'e.g. include={"cwi": ["c4st", "c4ix"]} or include=INCLUDE_QUAT_DATA'
     if not isinstance(include, dict) or not include:
         raise ValueError(f"include must say which datasets and tables to load, {example}.")
     checked = {}
@@ -59,6 +71,7 @@ def _check_include(include) -> dict:
 
 
 def _check_by(by) -> dict:
+    """``by`` with keys in lower case, county names turned into codes and relateids padded."""
     if by is None:
         return {}
     if not isinstance(by, dict):
@@ -69,8 +82,34 @@ def _check_by(by) -> dict:
         if name not in BY_KEYS:
             options = "; ".join(f"{k} ({v})" for k, v in BY_KEYS.items())
             raise ValueError(f"Data cannot be loaded by '{key}'. Available: {options}.")
-        checked[name] = [str(v).strip() for v in as_list([values])]
+        values = as_list([values])
+        if not values:
+            raise ValueError(f"Give at least one {name} in by.")
+        if name == "county":
+            checked[name] = list(dict.fromkeys(county_code(v) for v in values))
+        else:
+            checked[name] = list(dict.fromkeys(standard_relateid(v) for v in values))
     return checked
+
+
+def _read_qdi(by, refresh) -> dict:
+    """The QDI samples and their boreholes, narrowed to ``by``."""
+    tables = sources.read_qdi(refresh)
+    samples, holes = tables["qdi.texture"], tables["qdi.locations"]
+    # The texture view repeats each borehole's location; it comes from qdix instead.
+    samples = samples.drop(columns=["x", "y", "elevation"], errors="ignore")
+    sample_ids = samples["relateid"].map(standard_relateid)
+    hole_ids = holes["relateid"].map(standard_relateid)
+    if "county" in by:
+        codes = holes["county_c"].astype("string").str.strip().str.zfill(2)
+        keep = codes.isin(by["county"])
+        holes = holes[keep.fillna(False).to_numpy()]
+        samples = samples[sample_ids.isin(hole_ids[holes.index]).to_numpy()]
+    if "relateid" in by:
+        samples = samples[sample_ids[samples.index].isin(by["relateid"]).to_numpy()]
+    # qdix also lists boreholes with no texture samples; keep only those that have some.
+    holes = holes[hole_ids[holes.index].isin(sample_ids[samples.index]).to_numpy()]
+    return {"qdi.texture": samples, "qdi.locations": holes}
 
 
 def _standardise(frame, table) -> pd.DataFrame:
@@ -91,14 +130,13 @@ def _standardise(frame, table) -> pd.DataFrame:
 
 
 def assemble(tables) -> tuple:
-    """Turn the server's tables into (layers and samples, boreholes)."""
+    """Turn the dataset tables into (layers and samples, boreholes)."""
     records, boreholes = [], []
     for key, frame in tables.items():
         dataset, _, name = str(key).partition(".")
         table = TABLES.get((dataset, name))
         if table is None:
-            raise ValueError(f"The server sent a table called '{key}' that mgslib does not "
-                             "know about. mgslib may need updating.")
+            raise ValueError(f"mgslib does not know a table called '{key}'.")
         frame = _standardise(frame, table)
         if "relateid" not in frame.columns:
             raise ValueError(f"The {key} table has no relateid column, so it cannot be "
