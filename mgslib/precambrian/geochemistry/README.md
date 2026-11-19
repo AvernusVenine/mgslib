@@ -128,11 +128,13 @@ because a total cannot be split without assuming an oxidation ratio.
 
 ## Calculated values
 
-Two calculated quantities are available straight from the data, one value or row per sample.
+Three calculated quantities are available straight from the data, one value or row per sample.
 Like the unit conversions, they are worked out when asked for and nothing is added to the table.
 
 ```python
 data.CIA()                       # Chemical Index of Alteration
+data.Eu_anomaly()                # Eu/Eu*, normalised to chondrite (Taylor & McLennan 1985)
+data.Eu_anomaly("PAAS")          # ... or to another reference
 data.CIPW_norm()                 # CIPW normative minerals (wt%): quartz, orthoclase, albite, ...
 data.df.join(data.CIPW_norm())   # put the norm beside the rest of the table
 ```
@@ -146,8 +148,17 @@ data.df.join(data.CIPW_norm())   # put the norm beside the rest of the table
   are not meaningful and may not add up to 100. Where FeO and Fe2O3 were not both measured, total iron is divided
   using the ratio of Le Maitre (1976); pass `rock_type="volcanic"` for volcanic rocks (the
   default is plutonic).
+- **Eu_anomaly** is Eu/Eu* = Eu<sub>N</sub> / (Sm<sub>N</sub> × Tb<sub>N</sub>)<sup>1/2</sup>,
+  where N means divided by the reference value. Eu* is the geometric mean of Sm and Tb; Tb is
+  used rather than Gd, because Gd can itself be anomalous in sediment precipitated from seawater.
+  Above 1 is a positive anomaly. The default reference is the chondrite of Taylor & McLennan
+  (1985), `"TM85"` (Evensen et al. 1978 CI values × 1.5, volatile-free). Others: the chondrites
+  `"MS95"`, `"SM89"`, `"PON"`, and the shales `"PAAS"` (Post-Archean Australian Shale of
+  Pourmand et al. 2012), `"PAAS_TM85"` (Taylor & McLennan 1985) and `"MUQ"` (Mud of Queensland,
+  Kamber et al. 2005). A sample without Sm, Eu and Tb gets an empty value. It also works in
+  `Harker(..., y=["Eu/Eu*"])`.
 
-Both work on filtered data, for example `data.filter_by_lithology("Felsic Intrusive").CIA()`.
+All three work on filtered data, for example `data.filter_by_lithology("Felsic Intrusive").CIA()`.
 
 ## Detection limits
 
@@ -248,6 +259,42 @@ Chondrite_REE(granites, save="granite_ree.png")
 | `Al_Ti_Provenance` | Al2O3/TiO2 against Al2O3 (Hayashi et al. 1997) | mafic 3-8, intermediate 8-21, felsic 21-70 |
 | `Ti_Zr_Provenance` | TiO2 against Zr (Hayashi et al. 1997) | TiO2/Zr = 200 and 55 (values not yet checked against the paper) |
 | `K_Rb_Provenance` | Rb against K2O (Floyd & Leveridge 1987) | K/Rb = 230 trend line only |
+| `SmYb_YHo` | Y/Ho against Sm/Yb (not normalised), log scales (Alexander et al. 2008) | seawater to vent-fluid mixing line with the 1 % and 5 % points; seawater, high-T hydrothermal fluid and hydrogenetic Fe-Mn crust fields; chondritic Y/Ho = 28 |
+| `Eu_Anomaly_Aluminum` | Eu/Eu* (chondrite of Taylor & McLennan 1985; Lawrence et al. 2006) against Al2O3, log scales | Eu/Eu* = 1 line |
+| `Hydrothermal_Detrital_Wonder` | SiO2 against Al2O3 (Toth 1980; Wonder et al. 1988) | hydrothermal; hydrogenous and detrital input; deep-sea sediment; deep-sea pelagic sediment, split at SiO2 = 10, 3 and 2 × Al2O3 (**not exact**, see below) |
+
+Iron formation and chemical sediments:
+
+```python
+chemical = data.filter_by_lithology("Chemical (Meta)Sedimentary")
+SmYb_YHo(chemical)                     # seawater against hydrothermal REY
+Eu_Anomaly_Aluminum(chemical)          # is the Eu anomaly carried by detritus?
+Eu_Anomaly_Aluminum(chemical, reference="MUQ")
+Hydrothermal_Detrital_Wonder(chemical)
+```
+
+- `SmYb_YHo` follows fig. 6b of Alexander et al. (2008): Sm/Yb on the X axis, Y/Ho on the Y
+  axis. The mixing line and fields were digitised from the vector artwork of the published
+  figure, so they match it closely. Both Sm/Yb and Y/Ho are plain ratios of the concentrations,
+  not normalised.
+- `Eu_Anomaly_Aluminum`: a positive Eu anomaly that does not rise with Al2O3 points to
+  high-temperature hydrothermal input. One that rises with Al2O3 may come from feldspar-rich
+  detritus instead.
+
+**Not exact.** These numbers were not checked against the original papers:
+
+- `Hydrothermal_Detrital_Wonder`: no copy of Wonder et al. (1988) could be found, and no
+  open-source implementation of the diagram. The lines were digitised from two raster
+  reproductions: an MGS example figure (`example_data/Wonder_Diagram_Example.png`, slopes 9.9,
+  2.9 and 2.0) and Yalçın & Kara (2026, *Carpathian Journal of Earth and Environmental
+  Sciences* 21, fig. 4a, slopes 10.0 and 1.97, without the deep-sea sediment line). All pass
+  through the origin, so round values are used: SiO2 = 10 × Al2O3, 3 × Al2O3 and 2 × Al2O3.
+  Check them against the original paper before relying on a sample near a line; the values
+  live in `plots/_fields.py` (`WONDER_SIO2_AL2O3_SLOPES`).
+- `Eu_Anomaly_Aluminum`: the diagram is credited to Lawrence et al. (2006), which was not
+  checked directly. Lawrence et al. calculated Eu* as (Sm<sub>N</sub>² × Tb<sub>N</sub>)<sup>1/3</sup>
+  (from papers that cite them); here the more common square-root form is used, which gives
+  slightly different values.
 
 Options that work on every plot:
 

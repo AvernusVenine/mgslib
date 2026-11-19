@@ -457,6 +457,23 @@ class GeochemData:
 
         return chemistry.cia(self)
 
+    def Eu_anomaly(self, reference="TM85") -> pd.Series:
+        """Europium anomaly, Eu/Eu*, for each sample.
+
+        Eu/Eu* = Eu_N / (Sm_N x Tb_N)^(1/2), where _N means divided by the
+        reference value.  Above 1 is a positive anomaly,
+        below 1 a negative one.  Null where Sm, Eu or Tb is missing.
+
+        reference : what to normalise to - "TM85" (chondrite of Taylor &
+            McLennan 1985, the default), another chondrite ("MS95", "SM89",
+            "PON"), or a shale: "PAAS" (Post-Archean Australian Shale of
+            Pourmand et al. 2012), "PAAS_TM85" (Taylor & McLennan 1985), "MUQ"
+            (Mud of Queensland, Kamber et al. 2005).
+        """
+        from .. import chemistry
+
+        return chemistry.eu_anomaly(self, reference)
+
     def CIPW_norm(self, rock_type="plutonic") -> pd.DataFrame:
         """CIPW normative minerals (wt%) for each sample.
 

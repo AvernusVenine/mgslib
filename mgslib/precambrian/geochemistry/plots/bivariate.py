@@ -390,3 +390,109 @@ def K_Rb_Provenance(data, color_by=None, title=None, ax=None, save=None, show=Tr
     return _xy(data, chem.oxide(data, "K2O"), chem.trace(data, "Rb"), "the K2O-Rb diagram",
                title or "Source rock from K2O and Rb (Floyd & Leveridge 1987)",
                color_by, ax, save, show, "K2O (wt%)", "Rb (ppm)", draw, log="both")
+
+
+# --- Chemical sediments / iron formation ------------------------------------------------
+
+def SmYb_YHo(data, color_by=None, title=None, ax=None, save=None, show=True, show_fields=True):
+    """Y/Ho against Sm/Yb, both on log scales, for iron formation and other
+    chemical sediments (Alexander et al. 2008, fig. 6b).  Both are plain
+    ratios of the concentrations (ppm), not normalised.
+
+    Seawater has high Y/Ho and low Sm/Yb; high-temperature vent fluid has
+    chondritic Y/Ho (about 28) and high Sm/Yb.  The curve mixes the two, with
+    the points where the water is 1 % and 5 % vent fluid marked.  The fields of
+    modern seawater, vent fluid and hydrogenetic Fe-Mn crusts are drawn too.
+    Lines and fields are digitised from the published figure.
+    """
+    def draw(ax):
+        if not show_fields:
+            return
+        for name, outline in fields.ALEXANDER_FIELDS.items():
+            ax.plot(*zip(*outline), **FIELD_LINE)
+            ax.text(*fields.ALEXANDER_LABELS[name], name, **FIELD_TEXT)
+        ax.plot(*zip(*fields.ALEXANDER_MIXING_LINE), **FIELD_LINE)
+        for label, (x, y) in fields.ALEXANDER_MIXING_MARKS.items():
+            ax.plot([x], [y], marker="|", markersize=9, color=MUTED, zorder=1)
+            ax.text(x * 1.12, y * 1.05, label, **{**FIELD_TEXT, "ha": "left", "va": "bottom"})
+        ax.axhline(fields.Y_HO_CHONDRITE, linestyle="--", **FIELD_LINE)
+        ax.text(0.22, fields.Y_HO_CHONDRITE * 1.02, "Chondritic Y/Ho = 28",
+                **{**FIELD_TEXT, "ha": "left", "va": "bottom"})
+
+    sm_yb = chem.trace(data, "Sm") / chem.trace(data, "Yb")
+    y_ho = chem.trace(data, "Y") / chem.trace(data, "Ho")
+    return _xy(data, sm_yb, y_ho, "the Sm/Yb-Y/Ho diagram",
+               title or "Seawater and hydrothermal REY (Alexander et al. 2008)",
+               color_by, ax, save, show, "Sm/Yb", "Y/Ho", draw,
+               log="both", xlim=(0.2, 20), ylim=(10, 100))
+
+
+def Eu_Anomaly_Aluminum(data, color_by=None, title=None, ax=None, save=None, show=True,
+                        show_fields=True, reference="TM85"):
+    """Eu/Eu* against Al2O3 (wt%), both on log scales.  A positive Eu anomaly in iron formation or
+    chert points to high-temperature hydrothermal input, unless it rises with
+    Al2O3, in which case detritus (feldspar) may be carrying it.  The line is
+    Eu/Eu* = 1, no anomaly.
+
+    Diagram after Lawrence et al. (2006); Eu/Eu* = Eu_N / (Sm_N x Tb_N)^(1/2).
+    reference : what to normalise to - "TM85" (chondrite of Taylor & McLennan
+        1985, default), another chondrite ("MS95", "SM89", "PON"), or a shale
+        ("PAAS", "PAAS_TM85", "MUQ").
+    """
+    def draw(ax):
+        from matplotlib.ticker import FuncFormatter
+
+        plain = FuncFormatter(lambda value, _: f"{value:g}")   # 0.1, 1, 2 not 10^-1, 2 x 10^0
+        ax.xaxis.set_major_formatter(plain)
+        ax.yaxis.set_major_formatter(plain)
+        ax.yaxis.set_minor_formatter(plain)
+        ax.tick_params(which="minor", colors=INK_SECONDARY, labelsize=9)
+        if not show_fields:
+            return
+        ax.axhline(fields.EU_ANOMALY_NONE, **FIELD_LINE)
+        x0, x1 = ax.get_xlim()
+        y0, y1 = ax.get_ylim()
+        right = {**FIELD_TEXT, "ha": "right"}
+        at = x1 * (x0 / x1) ** 0.03               # just inside the right edge, log scale
+        step = (y1 / y0) ** 0.05                   # a short distance above / below the line
+        if y1 > 1:
+            ax.text(at, step, "Positive Eu anomaly", **right)
+        if y0 < 1:
+            ax.text(at, 1 / step, "Negative Eu anomaly", **right)
+
+    name = {"TM85": "chondrite (Taylor & McLennan 1985)", "MS95": "chondrite (MS95)",
+            "SM89": "chondrite (SM89)", "PON": "chondrite (PON)"}.get(reference.upper(),
+                                                                      reference.upper())
+    return _xy(data, chem.oxide(data, "Al2O3"), chem.eu_anomaly(data, reference),
+               "the Eu/Eu*-Al2O3 diagram",
+               title or "Eu anomaly against Al2O3 (Lawrence et al. 2006)",
+               color_by, ax, save, show, "Al2O3 (wt%)",
+               f"Eu/Eu*, normalised to {name}", draw, log="both")
+
+
+def Hydrothermal_Detrital_Wonder(data, color_by=None, title=None, ax=None, save=None, show=True,
+                                 show_fields=True):
+    """SiO2 against Al2O3 (wt%), separating hydrothermal sediment from
+    hydrogenous and detrital input, deep-sea sediment and deep-sea pelagic
+    sediment (Toth 1980; Wonder et al. 1988).  Hydrothermal precipitates are
+    silica-rich and alumina-poor.
+
+    The boundaries are SiO2 = 10, 3 and 2 x Al2O3.  They were read from
+    reproductions of the diagram, not from the 1988 paper itself, so treat
+    them as approximate.
+    """
+    def draw(ax):
+        if not show_fields:
+            return
+        for slope in fields.WONDER_SIO2_AL2O3_SLOPES.values():
+            ax.plot([0, 100 / slope], [0, 100], **FIELD_LINE)
+        ax.set_xlim(0, 20)
+        ax.set_ylim(0, 100)
+        for label, position in fields.WONDER_SIO2_AL2O3_LABELS.items():
+            ax.text(*position, label, **FIELD_TEXT)
+
+    majors = chem.major_oxides(data, ["SiO2", "Al2O3"])
+    return _xy(data, majors["Al2O3"], majors["SiO2"], "the SiO2-Al2O3 diagram",
+               title or "Hydrothermal or hydrogenous (Wonder et al. 1988; boundaries approximate)",
+               color_by, ax, save, show, "Al2O3 (wt%)", SIO2_LABEL, draw,
+               xlim=(0, 20), ylim=(0, 100))
